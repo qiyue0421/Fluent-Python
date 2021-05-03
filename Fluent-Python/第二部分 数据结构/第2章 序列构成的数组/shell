@@ -1,0 +1,20 @@
+#!/bin/bash
+# 该脚本用于自动修改backuprecovery，不同的环境注意修改add_text字段
+
+basedir=$(pwd)
+
+add_text="\n[heartbeat]\nreportUrl = http://10.26.1.202:9094/teledb/v1"
+
+configdirs=`ls -al -d */ | awk '{print$9}' | grep -vE 'binlogRepl|dataGenius'`
+
+for configdir in ${configdirs}
+do
+    echo -e $add_text >> "$configdir/dataGenius/conf/config.ini"
+	cp -r dataGenius/bin/ $configdir/dataGenius/
+	echo -n "实例 `echo ${configdir%?}` "
+	"$basedir"/"$configdir"/dataGenius/bin/backuprecovery -v | head -n 1
+	echo "启动backuprecovery..."
+	/app/telemonitor/telemonitor/python/operate/../tools/"$configdir"/dataGenius/bin/backuprecovery &
+	sleep 3
+	echo
+done
