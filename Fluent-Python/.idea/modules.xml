@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../Daliy_check/.idea/Daliy_check.iml" filepath="$PROJECT_DIR$/../Daliy_check/.idea/Daliy_check.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/Fluent-Python.iml" filepath="$PROJECT_DIR$/.idea/Fluent-Python.iml" />
     </modules>
   </component>
