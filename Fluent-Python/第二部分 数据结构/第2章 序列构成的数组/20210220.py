@@ -1,7 +1,7 @@
 import array
 from collections import namedtuple
 
-"""第5章 一等函数、序列类型"""
+"""1、内置序列类型概览"""
 # python标准库用C实现了丰富的序列类型
 # 按照存放数据类型的不同
 # 容器序列：list、tuple和collections.deque，这些序列能存放不同类型的数据，实际存放的是它们所包含的任意类型的对象的引用
