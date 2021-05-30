@@ -6,3 +6,4 @@ def hello(person):
 
 # bobo -f test.py
 # curl http://localhost:8080/?person=qiyue
+
