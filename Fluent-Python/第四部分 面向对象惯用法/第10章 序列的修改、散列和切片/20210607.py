@@ -1,6 +1,6 @@
 """1、Vector类：用户定义的序列类型"""
 # 使用组合模式实现Vector类，而不使用继承。向量的分量存储在浮点数组中，而且还将实现不可变扁平序列所需的方法。
-
+import numbers
 
 """2、Vector类第1版：与Vector2d类兼容"""
 from array import array
@@ -11,6 +11,7 @@ import math
 class Vector:
     """ Vector类 """
     typecode = 'd'  # 类属性，在类实例和字节序列之间转换时使用
+    shortcut_names = 'xyzt'
 
     def __init__(self, components):
         self._components = array(self.typecode, components)  # self._components是“受保护的”实例属性，把Vector的分量保存在一个数组中
@@ -41,10 +42,41 @@ class Vector:
     def __len__(self):
         return len(self._components)
 
-    def __getitem__(self, index):
-        return self._components[index]  # 支持迭代，只需实现__getitem__方法
+    def __getitem__(self, index):  # 处理切片
+        cls = type(self)  # 获取实例所属的类（即Vector），供后面使用
+        if isinstance(index, slice):  # 如果index参数的值是slice对象
+            return cls(self._components[index])  # 调用类的构造方法，使用_components数组的切片构建一个新的Vector实例
+        elif isinstance(index, numbers.Integral):  # 如果index参数是int或其他整数类型
+            # noinspection PyTypeChecker
+            return self._components[index]  # 返回数组中相应的元素
+        else:
+            msg = '{cls.__name__} indices must be integers'
+            raise TypeError(msg.format(cls=cls))  # 否则抛出异常
 
-    # 从字节序列转换成Vector2d实例
+    def __getattr__(self, name):  # 动态存取属性，通过单个字母访问前几个分量
+        cls = type(self)  # 获取实例所属的类（即Vector）
+        if len(name) == 1:  # 如果属性名只有一个字母，那么可能是shortcut_names中的一个
+            pos = cls.shortcut_names.find(name)  # 查找字母的位置
+            if 0 <= pos < len(self._components):  # 如果位置落在范围内，返回数组中对应的元素
+                return self._components[pos]
+        msg = '{.__name__!r} object has no attribute {!r}'
+        raise AttributeError(msg.format(cls, name))
+
+    def __setattr__(self, name, value):  # 禁止对实例属性赋值
+        cls = type(self)
+        if len(name) == 1:
+            if name in cls.shortcut_names:
+                error = 'readonly attributes {attr_name!r}'  # 设置错误信息
+            elif name.islower():  # 如果name是小写字母，为所有小写字母设置一个错误消息
+                error = "can't set attributes 'a' to 'z' in {cls_name!r}"
+            else:
+                error = ''
+            if error:
+                msg = error.format(cls_name=cls.__name__, attr_name=name)
+                raise AttributeError(msg)  # 抛出异常
+        super().__setattr__(name, value)  # 默认情况：在超类上调用__setattr__方法，提供标准行为
+
+    # 从字节序列转换成Vector实例
     @classmethod
     def frombytes(cls, octets):  # 不用传入self参数，相反需要通过cls传入类本身
         typecode = chr(octets[0])  # 从第一个字节中读取typecode
@@ -87,18 +119,50 @@ print(dir(slice))  # 发现它有start、stop和step数据属性，以及indices
 '__le__', '__lt__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', 
 '__setattr__', '__sizeof__', '__str__', '__subclasshook__', 'indices', 'start', 'step', 'stop']
 
+s.indices(len) -> (start, stop, stride)
+    给定长度为len的序列，计算S表示的扩展切片的起始和结尾索引，以及步幅。超出边界的索引会被截掉，这与常规切片的处理方式一样。主要用于优雅的处理缺失索引和复数索引，
+    以及长度超过目标序列的切片，这个方法会“整顿”元组，把start、stop和stride都变成非负数，而且都落在指定长度序列的边界内。
+    
+假设有个长度为5的序列，例如'ABCDE':
+>>> slice(None, 10, 2).indices(5)
+(0, 5, 2)
+'ABCDE'[:10:2] 等同于 'ABCDE'[0:5:2]
+
+>>> slice(-3, None, None).indices(5)
+(2, 5, 1)
+'ABCDE'[-3:] 等同于 'ABCDE'[2:5:1]
+    
 '''
+v7 = Vector(range(7))
+print(v7[-1])
+# 6.0
+print(v7[1:4])  # 切片索引创建一个新的Vector实例
+# (1.0, 2.0, 3.0)
 
 
+"""4、动态存取属性"""
+'''对 my_obj.x 表达式，Python会进行如下查找：
+①、首先检查my_obj实例有没有名为x的属性
+②、到类（my_obj.__class__）中找
+③、顺着继承树继续查找
+④、调用my_obj所属类中定义的__getattr__方法，传入self和属性名称的字符串形式（如'x'）
 
+'''
+v = Vector(range(5))
+print(v)
+# (0.0, 1.0, 2.0, 3.0, 4.0)
+print(v.x)  # 获取第一个元素
+# 0.0
 
+''' __getattr__运作机制：
+仅当对象没有指定名称的属性时，Python才会调用那个方法，这是一种后备机制。v.x=10这样赋值之后，v对象有x属性了，因此使用v.x获取x属性时的值不会调用__getattr__方法，解释器直接返回绑定到v.x上的值
+>>> v.x = 10  # 为v.x赋值
+>>> print(v.x)  # 读取v.x，得到的是新值
+10
+>>> print(v)  # 可是，向量的分量没有变
+(0.0, 1.0, 2.0, 3.0, 4.0)
 
-
-
-
-
-
-
+'''
 
 
 
