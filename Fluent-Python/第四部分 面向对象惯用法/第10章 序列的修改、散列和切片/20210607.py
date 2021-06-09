@@ -1,11 +1,14 @@
 """1、Vector类：用户定义的序列类型"""
 # 使用组合模式实现Vector类，而不使用继承。向量的分量存储在浮点数组中，而且还将实现不可变扁平序列所需的方法。
+import itertools
 import numbers
 
 """2、Vector类第1版：与Vector2d类兼容"""
 from array import array
 import reprlib
 import math
+import functools
+import operator
 
 
 class Vector:
@@ -31,7 +34,20 @@ class Vector:
         return bytes([ord(self.typecode)]) + bytes(self._components)  # 直接使用self._components构建bytes对象
 
     def __eq__(self, other):
-        return tuple(self) == tuple(other)  # 构建元组进行比较
+        """ 使用zip()函数提高比较效率
+        if len(self) != len(other):  # 如果两个对象的长度不一样，那么它们不相等
+            return False
+        for a, b in zip(self, other):  # 提高比较效率，使用zip函数生成一个由元组构成的生成器，元组中的元素来自参数传入的各个可迭代对象
+            if a != b:  # 只要有分量不同，返回False
+                return False
+        return True
+        """
+        return len(self) == len(other) and all(a == b for a, b in zip(self, other))  # 用all()函数比较所有分量的结果都是True，首先要检查两个操作数长度是否相同，因为zip()函数会在最短的那个操作数耗尽时停止
+
+    def __hash__(self):
+        hashes = (hash(x) for x in self._components)  # 创建一个生成器表达式，惰性计算各个分量的散列值，得到一个可迭代对象
+        # hashes = map(hash, self._components)  # 也可以使用map()函数，将函数应用到各个元素上，生成一个新序列
+        return functools.reduce(operator.xor, hashes, 0)  # 使用xor函数计算聚合的散列值，第三个参数0是初始值
 
     def __abs__(self):
         return math.sqrt(sum(x * x for x in self))  # 首先计算各分量的平方之和，然后再使用sqrt方法开平方
@@ -75,6 +91,28 @@ class Vector:
                 msg = error.format(cls_name=cls.__name__, attr_name=name)
                 raise AttributeError(msg)  # 抛出异常
         super().__setattr__(name, value)  # 默认情况：在超类上调用__setattr__方法，提供标准行为
+
+    def angle(self, n):  # 使用“n维球体”词条中的公式计算某个角坐标
+        r = math.sqrt(sum(x * x for x in self[n:]))
+        a = math.atan2(r, self[n-1])
+        if (n == len(self) - 1) and (self[-1] < 0):
+            return math.pi * 2 - a
+        else:
+            return a
+
+    def angles(self):  # 创建生成器表达式，按需计算所有角坐标
+        return (self.angle(n) for n in range(1, len(self)))
+
+    def __format__(self, format_spec=''):  # 格式化函数
+        if format_spec.endswith('h'):  # 超球面坐标
+            format_spec = format_spec[:-1]
+            coords = itertools.chain([abs(self), self.angles()])  # 使用itertools.chain函数生成生成器表达式，无缝迭代向量的模和各个角坐标
+            outer_fmt = '<{}>'  # 使用尖括号显示球面坐标
+        else:
+            coords = self
+            outer_fmt = '({})'  # 使用圆括号显示笛卡尔坐标
+        components = (format(c, format_spec) for c in coords)
+        return outer_fmt.format(', '.join(components))
 
     # 从字节序列转换成Vector实例
     @classmethod
@@ -165,8 +203,18 @@ print(v.x)  # 获取第一个元素
 '''
 
 
+"""5、散列和快速等值测试"""
+'''reduce()函数原理
+* 函数体：reduce(function, iterable, initializer)
+* 关键思想：把一系列值归约成单个值
+* 说明：reduce()函数的第一个参数是接受两个参数的函数，第二个参数是一个可迭代的对象。假如有个接受两个参数的fn函数和一个lst列表。调用reduce(fn, lst)时，fn会应用到第一对元素上，即fn(lst[0], lst[1])，
+生成第一个结果r1。然后，fn会应用到r1和下一个元素上，即fn(r1, lst[2])，生成第二个结果r2。接着调用fn(r2, lst[3])，生成r3...直到最后一个元素，返回最后得到的结果rN。
+* 注意：使用reduce()函数时，最好提供第三个参数，这样能够避免异常：TypeError:reduce() of empty sequence with no inital value，如果序列为空，initializer是返回的结果；否则，在归约中使用它作为第一个参数，
+因此应该是恒等值。比如，对+、|和^来说，应该是0；而对*和&来说，应该是1
 
+# 示例
+import functools
 
-
-
-
+functools.reduce(lambda a,b: a*b, range(1, 6))  # 计算5的阶乘
+# 120
+'''
