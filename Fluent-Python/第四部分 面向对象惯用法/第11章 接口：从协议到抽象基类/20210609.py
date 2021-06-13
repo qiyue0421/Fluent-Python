@@ -122,5 +122,90 @@ print(Fake)  # 创建Fake类
 # TypeError: Can't instantiate abstract class Fake with abstract methods load
 
 ''' 抽象基类句法详解
+声明抽象基类最简单的方式是继承abc.ABC或其他抽象基类。abc.ABC是Python3.4新增的类，用旧版Python时必须在class语句中使用metaclass=关键字，把值设为abc.ABCMeta，例如：
 
+class Tombola(metaclass=abc.ABCMeta):
+    # ...
+    
+metaclass=关键字参数是Python3引入的，在Python2中必须使用 __metaclass__ 类属性：
+
+class Tombola(object):  # Python2.0
+    __metaclass__ = abc.ABCMeta
+    # ...
+    
 '''
+
+
+''' 定义Tombola抽象基类的子类 '''
+# BingoCage子类使用了更还的随即发生器，实现了所需的抽象方法load和pick，从Tombola中继承了loaded方法，覆盖了inspect方法，还增加了__call__方法
+import random
+
+class BingoCage(Tombola):
+    def __init__(self, items):
+        self._randomizer = random.SystemRandom()  # 生成”适合用于加密“的随机字节序列
+        self._items = []
+        self.load(items)  # 委托load()方法实现初始加载
+
+    def load(self, items):
+        self._items.extend(items)
+        self._randomizer.shuffle(self._items)  # 使用SystemRandom实例的shuffle()方法
+
+    def pick(self):
+        try:
+            return self._items.pop()
+        except IndexError:
+            raise LookupError('pick from empty BingoCage')
+
+    def __call__(self):
+        self.pick()  # bingo.pick()的快捷方式是bingo()
+
+
+# LotteryBlower子类打乱”数字球“后没有取出最后一个，而是取出一个随机位置上的球
+class LotteryBlower(Tombola):
+    def __init__(self, iterable):
+        self._balls = list(iterable)  # 初始化时接受任何可迭代对象，把参数构建成列表
+
+    def load(self, iterable):
+        self._balls.extend(iterable)
+
+    def pick(self):
+        try:
+            position = random.randrange(len(self._balls))  # 如果范围为空
+        except ValueError:  # 捕获ValueError异常
+            raise LookupError('pick from empty LotteryBlower')  # 兼容Tombola，捕获ValueError，抛出LookupError
+        return self._balls.pop(position)
+
+    def loaded(self):  # 覆盖loaded方法，避免调用inspect方法
+        return bool(self._balls)  # 直接处理self._balls而不必构建整个有序元组，从而提升速度
+
+    def inspect(self):  # 使用一行代码覆盖inspect方法
+        return tuple(sorted(self._balls))
+
+
+''' 使用register方法声明虚拟子类 '''
+# 注册虚拟子类的方式是在抽象基类上调用register方法，这么做了后，注册的类会变成抽象基类的虚拟子类，而且issubclass和isinstance等函数都能识别，但是注册的类不会从抽象基类中继承任何方法或属性
+
+# noinspection PyUnresolvedReferences
+@Tombola.register  # 把TomboList注册为Tombola的虚拟子类
+class TomboList(list):  # 扩展list，TomboList是list的真实子类
+    def pick(self):
+        if self:  # 从list中继承__bool__方法，列表不为空时返回True
+            position = random.randrange(len(self))
+            return self.pop(position)  # 调用继承自list的self.pop方法，传入一个随机的元素索引
+        else:
+            raise LookupError('pop from empty TomboList')
+
+    load = list.extend  # TomboList.load与list.extend一样
+
+    def loaded(self):
+        return bool(self)  # loaded方法委托bool函数
+
+    def inspect(self):
+        return tuple(sorted(self))
+
+
+print(issubclass(TomboList, Tombola))  # 判断TomboList是不是Tombola的子类
+# True
+t = TomboList(range(100))
+print(isinstance(t, Tombola))
+# True
