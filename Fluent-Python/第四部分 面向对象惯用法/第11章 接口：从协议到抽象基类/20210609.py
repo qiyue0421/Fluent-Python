@@ -209,3 +209,68 @@ print(issubclass(TomboList, Tombola))  # 判断TomboList是不是Tombola的子�
 t = TomboList(range(100))
 print(isinstance(t, Tombola))
 # True
+
+
+''' 扩展BingoCage，支持增量赋值运算符 '''
+class AddableBingoCage(BingoCage):
+    def __add__(self, other):  # 支持+
+        if isinstance(other, Tombola):  # __add__方法的第二个操作数只能是Tombola实例
+            return AddableBingoCage(self.inspect() + other.inspect())
+        else:
+            return NotImplemented
+
+    def __iadd__(self, other):  # 支持+=
+        if isinstance(other, Tombola):
+            other_iterable = other.inspect()
+        else:  # 如果不是Tombola实例
+            try:
+                other_iterable = iter(other)  # 尝试使用other创建迭代器
+            except TypeError:  # 失败后抛出异常
+                self_cls = type(self).__name__
+                msg = "right operand in += must be {!r} or an iterable"  # 给出错误提示
+                raise TypeError(msg.format(self_cls))
+        self.load(other_iterable)  # 把other_iterable载入self
+        return self  # 增量赋值特殊方法必须返回self
+
+
+# 测试 + 运算符
+vowels = 'AEIOU'
+globe = AddableBingoCage(vowels)  # 使用5个元素创建一个globe实例
+print(globe.inspect())
+# ('A', 'E', 'I', 'O', 'U')
+print(globe.pick() in vowels)  # 从中取出一个元素，确认它在vowels中
+# True
+print(len(globe.inspect()))  # globe元素数量只剩下4个
+# 4
+
+globe2 = AddableBingoCage('XYZ')  # 创建第二个实例，它有3个元素
+globe3 = globe + globe2  # 将前两个实例加在一起，创建第三个实例，这个实例有7个元素
+print(len(globe3.inspect()))
+# 7
+
+# void = globe + [10, 20]  # AddableBingoCage实例无法与列表相加，抛出TypeError异常
+'''
+Traceback (most recent call last):
+  ...
+    void = globe + [10, 20]
+TypeError: unsupported operand type(s) for +: 'AddableBingoCage' and 'list'
+'''
+
+
+# 测试 += 运算符
+globe_orig = globe
+print(len(globe.inspect()))  # 现有4个元素
+# 4
+globe += globe2  # 从其他实例中接受元素，+=的右操作数也可以是任何可迭代对象
+print(len(globe.inspect()))  # 现有7个元素
+# 7
+print(globe is globe_orig)  # globe始终指代globe_orig对象
+# True
+print(len(globe_orig.inspect()))
+# 7
+# globe += 1  # AddableBingoCage实例不能与非可迭代对象相加
+'''
+Traceback (most recent call last):
+  ...
+TypeError: right operand in += must be 'AddableBingoCage' or an iterable
+'''
