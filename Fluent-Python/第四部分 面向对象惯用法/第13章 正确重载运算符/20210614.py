@@ -95,8 +95,6 @@ Vector([1.0, 2.0, 3.0])
 Vector([55.0, 77.0, 99.0])
 >>> id(v1)  # 同样创建了新的Vector实例
 4302858336
-
-
 '''
 
 
@@ -252,34 +250,3 @@ class Vector:
         typecode = chr(octets[0])
         memv = memoryview(octets[1:]).cast(typecode)
         return cls(memv)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
