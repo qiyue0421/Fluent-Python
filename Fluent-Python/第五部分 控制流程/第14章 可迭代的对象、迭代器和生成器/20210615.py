@@ -141,5 +141,3 @@ print(list(it))  # 元素取完后迭代器为空
 # []
 print(list(iter(s3)))  # 再次迭代需要重新构建迭代器
 # ['Pig', 'and', 'Pepper']
-
-
