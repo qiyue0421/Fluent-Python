@@ -64,5 +64,82 @@ print(list(s))  # 因为可以迭代，所以Sentence实例可以用来构建列
 '''
 
 
+"""2、可迭代的对象与迭代器的对比"""
+''' 可迭代的对象与迭代器
+# 定义
+可迭代的对象：使用iter内置函数可以获取迭代器的对象。如果对象实现了能返回迭代器的__iter__方法，那么对象就是可迭代的。序列都可以迭代；实现了__getitem__方法，而且其参数是从零开始的索引，这种对象也可以迭代
+迭代器：实现了无参数的__next__方法，返回序列中的下一个元素；如果没有元素了，那么抛出StopIteration异常的对象就是迭代器。Python中的迭代器还实现了__iter__方法，因此迭代器也可以迭代
+两者间的关系：Python从可迭代的对象中获取迭代器
+
+# 简单for循环
+>>> s = 'ABC'  # 可迭代对象，背后有迭代器，只是我们看不到
+>>> for char in s:
+...    print(char)
+...
+A
+B
+C
+
+# 没有for语句，不得不使用while循环模拟
+>>> s = 'ABC'
+>>> it = iter(s)  # 使用可迭代的对象构建迭代器it
+>> while True:
+...    try:
+...        print(next(it))  # 不断在迭代器上调用next函数，获取下一个字符
+...    except StopIteration:  # 没有字符了，会抛出StopIteration异常
+...        del it  # 释放对it的引用，即废弃迭代器对象
+...        break  # 退出循环
+...
+A
+B
+C
+'''
+
+
+''' 两个标准的迭代器接口方法：
+__next__  返回下一个可用的元素，如果没有元素了，抛出StopIteration异常
+__iter__  返回self，以便在应该使用可迭代对象的地方使用迭代器，例如在for循环中
+
+# 这个接口在collections.abc.Iterator抽象基类中制定，abc.Iterator源码：
+class Iterator(Iterable):  # 继承自Iterable类
+
+    __slots__ = ()
+
+    @abstractmethod
+    def __next__(self):  # 定义了__next__抽象方法
+        'Return the next item from the iterator. When exhausted, raise StopIteration'
+        raise StopIteration
+
+    def __iter__(self):  # __iter__抽象方法在Iterable类中定义
+        return self  # 实现__iter__方法的方式是返回实例本身，这样在需要可迭代对象的地方可以使用迭代器
+
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is Iterator:
+            return _check_methods(C, '__iter__', '__next__')
+        return NotImplemented
+'''
+
+s3 = Sentence('Pig and Pepper')  # 创建实例s3，包含3个单词
+it = iter(s3)  # 从s3中获取迭代器
+print(it)
+# <iterator object at 0x0000029446BFAB00>
+print(next(it))  # 调用next(it)，获取下一个单词
+# Pig
+print(next(it))
+# and
+print(next(it))
+# Pepper
+'''
+print(next(it))  # 没有单词会抛出StopIteration
+Traceback (most recent call last):
+  ...
+StopIteration
+'''
+
+print(list(it))  # 元素取完后迭代器为空
+# []
+print(list(iter(s3)))  # 再次迭代需要重新构建迭代器
+# ['Pig', 'and', 'Pepper']
 
 
