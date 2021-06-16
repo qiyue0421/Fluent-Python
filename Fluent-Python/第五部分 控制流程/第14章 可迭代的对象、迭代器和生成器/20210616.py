@@ -122,12 +122,48 @@ class Sentence:
         return
 
 
+"""6、Sentence类第5版：生成器表达式"""
+# 生成器表达式可以理解为列表推导的惰性版本：不会迫切地构建列表，而是返回一个生成器，按需惰性生成元素。生成器表达式是语法糖，完全可以替换成生成器函数。
+res1 = [x*3 for x in gen_AB()]  # 列表推导式迫切地迭代gen_AB()函数生成地生成器对象产出的元素：'A'和'B'
+'''
+start
+continue
+end.
+'''
+for i in res1:  # 迭代res1列表
+    print('-->', i)
+'''
+--> AAA
+--> BBB
+'''
 
+res2 = (x*3 for x in gen_AB())  # 生成器表达式返回生成器，但是这里并不使用
+print(res2)
+# <generator object <genexpr> at 0x000001D15F10B480>
+for i in res2:  # 只有for循环迭代res2时，gen_AB函数的定义体才会真正执行
+    print('-->', i)
+'''
+start
+--> AAA
+continue
+--> BBB
+end.
+'''
 
+import re
+import reprlib
 
+RE_WORD = re.compile('\w+')
 
+class Sentence:
+    def __init__(self, text):
+        self.text = text  # 不需要words列表
 
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)  # reprlib.repr函数用于生成大型数据结构的简略字符串表示形式
 
+    def __iter__(self):  # 不再是生成器函数了，因为没有yield关键字，最终效果没变————还是返回一个生成器对象
+        return (match.group() for match in RE_WORD.finditer(self.text))  # 使用生成器表达式构建生成器，然后将其返回
 
 
 
