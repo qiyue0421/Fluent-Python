@@ -1,4 +1,5 @@
 """3、Sentence类第2版：典型的迭代器"""
+import itertools
 import re
 import reprlib
 
@@ -165,19 +166,42 @@ class Sentence:
     def __iter__(self):  # 不再是生成器函数了，因为没有yield关键字，最终效果没变————还是返回一个生成器对象
         return (match.group() for match in RE_WORD.finditer(self.text))  # 使用生成器表达式构建生成器，然后将其返回
 
+''' 何时使用生成器表达式
+遇到简单的情况时，可以使用生成器表达式，扫一眼就知道代码作用；如果生成器表达式要分成多行写，则更应该定义生成器函数，以便提高可读性
+
+'''
 
 
+"""8、等差数列生成器"""
+class ArithmeticProgression:
+    def __init__(self, begin, step, end=None):
+        self.begin = begin
+        self.step = step
+        self.end = end  # None -> 无穷数列
 
+    def __iter__(self):
+        result = type(self.begin + self.step)(self.begin)
+        forever = self.end is None  # 是否是无穷数列
+        index = 0
+        while forever or result < self.end:  # 要么一直运行，要么result小于self.end时退出
+            yield result  # 生成当前的result值
+            index += 1
+            result = self.begin + self.step * index  # 计算可能存在的下一个结果
 
+ap = ArithmeticProgression(1, .5, 3)
+print(list(ap))
+# [1.0, 1.5, 2.0, 2.5]
 
+''' 使用itertools模块生成等差数列 '''
+# itertools.count()函数会生成从零开始的整数数列，然而这个函数从不停止
+# itertools.takewhile()函数会生成一个使用另一个生成器的生成器，在指定的条件计算结果为False时停止
+gen = itertools.takewhile(lambda n: n < 3, itertools.count(1, .5))  # 结合两个函数
+print(list(gen))
+# [1, 1.5, 2.0, 2.5]
 
-
-
-
-
-
-
-
-
-
-
+def aritprog_gen(begin, step, end=None):  # 不是生成器函数，因为没有yield关键字
+    first = type(begin + step)(begin)
+    ap_gen = itertools.count(first, step)  # 生成器
+    if end is not None:  # 如果不是无穷数列
+        ap_gen = itertools.takewhile(lambda n: n < 3, ap_gen)
+    return ap_gen  # 返回一个生成器
