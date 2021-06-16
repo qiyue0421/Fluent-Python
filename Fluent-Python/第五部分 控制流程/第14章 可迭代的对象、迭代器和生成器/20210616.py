@@ -102,6 +102,24 @@ end.  # 第三次调用next()，继续迭代，前进到生成器末尾，文本
 
 
 """5、Sentence类第4版：惰性实现"""
+# 目前版本的Sentence类都不具有惰性，因为__init__方法急迫地构建好了文本中的单词列表，然后将其绑定到self.words属性上。这样就得处理整个文本，列表使用的内存量可能与文本本身一样多
+# re.finditer函数是re.findall函数的惰性版本，返回的不是列表，而是一个生成器，按需生成re.MatchObject实例。如果有很多匹配，re.finditer函数能够节省大量内存
+import re
+import reprlib
+
+RE_WORD = re.compile('\w+')
+
+class Sentence:
+    def __init__(self, text):
+        self.text = text  # 不需要words列表
+
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)  # reprlib.repr函数用于生成大型数据结构的简略字符串表示形式
+
+    def __iter__(self):  # __iter__方法是生成器函数
+        for match in RE_WORD.finditer(self.text):  # finditer函数构建一个迭代器，包含self.text中匹配RE_WORD的单词，产生MatchObject实例
+            yield match.group()  # 从MatchObject实例中提取匹配正则表达式的具体文本
+        return
 
 
 
