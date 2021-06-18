@@ -1,12 +1,12 @@
 """9、标准库中的生成器函数"""
 ''' 用于过滤的生成器函数：从输入的可迭代对象中产出元素的子集，而且不修改元素本身
    模块                  函数                                                                         说明
-itertools   compress(it, selector_it)                             并行处理两个可迭代的对象；如果selector_it中的元素是真值，产出it中对应的元素
-itertools   dropwhile(predicate, it)                              处理it，跳过predicate的计算结果为真值的元素，然后产出剩下的各个元素（不再进一步检查）.
-(内置)       filter(predicate, it)                                把it中的各个元素传给predicate，如果predicate(item)返回真值，那么产出对应的元素；如果predicate是None，那么只产出真值元素
-itertools   filterfalse(predicate, it)                            与filter函数的作用类似，不过predicate的逻辑是相反的：predicate返回假值时产出对应的元素
-itertools   islice(it, stop)或islice(it, start, stop, step=1)     产出it的切片，作用类似于s[:stop]或s[start:stop:step]，不过it可以是任何可迭代的对象，而且这个函数实现的是惰性操作
-itertools   takewhile(predicate, it)                              predicate返回真值时产出对应的元素，然后立即停止，不再继续检查
+itertools     compress(it, selector_it)                             并行处理两个可迭代的对象；如果selector_it中的元素是真值，产出it中对应的元素
+itertools     dropwhile(predicate, it)                              处理it，跳过predicate的计算结果为真值的元素，然后产出剩下的各个元素（不再进一步检查）.
+(内置)         filter(predicate, it)                                把it中的各个元素传给predicate，如果predicate(item)返回真值，那么产出对应的元素；如果predicate是None，那么只产出真值元素
+itertools     filterfalse(predicate, it)                            与filter函数的作用类似，不过predicate的逻辑是相反的：predicate返回假值时产出对应的元素
+itertools     islice(it, stop)或islice(it, start, stop, step=1)     产出it的切片，作用类似于s[:stop]或s[start:stop:step]，不过it可以是任何可迭代的对象，而且这个函数实现的是惰性操作
+itertools     takewhile(predicate, it)                              predicate返回真值时产出对应的元素，然后立即停止，不再继续检查
 '''
 import itertools
 
@@ -115,3 +115,49 @@ print(list(itertools.product('ABC', repeat=2)))  # repeat关键字参数用于�
 # [('A', 'A'), ('A', 'B'), ('A', 'C'), ('B', 'A'), ('B', 'B'), ('B', 'C'), ('C', 'A'), ('C', 'B'), ('C', 'C')]
 
 
+''' 用于扩展的生成器函数：从一个元素中产出多个值，扩展输入的可迭代对象
+   模块                       函数                                                        说明
+itertools           combinations(it, out_len)                      把it产出的out_len个元素组合在一起，然后产出
+itertools           combinations_with_replacement(it, out_len)     把it产出的out_len个元素组合在一起，然后产出，包含相同元素的组合
+itertools           count(start=0, step=1)                         从start开始不断产出数字，按step指定的步幅增加
+itertools           cycle(it)                                      从it中产出各个元素，存储各个元素的副本，然后按顺序重复不断地产出各个元素
+itertools           permutations(it, out_len=None)                 把out_len个it产出的元素排列在一起，然后产出这些排列；out_len的默认值等于len(list(it))
+itertools           repeat(item, [times])                          重复不断地产出指定的元素，除非提供times，指定次数    
+'''
+ct = itertools.count()  # 构建生成器ct
+print(next(ct))  # 获取ct中的第一个元素
+# 0
+print(next(ct), next(ct), next(ct))  # 特别注意，不能使用ct构建列表，因为ct是无穷的
+# 1, 2, 3
+print(list(itertools.islice(itertools.count(1, .3), 3)))  # 可以使用islice和takewhile做限制来构建列表
+# [1, 1.3, 1.6]
+
+cy = itertools.cycle('ABC')
+print(next(cy))
+# A
+print(list(itertools.islice(cy, 7)))  # 只有受到islice函数的限制，才能构建列表
+# ['B', 'C', 'A', 'B', 'C', 'A', 'B']
+
+rp = itertools.repeat(7)  # 始终产出数字7
+print(next(rp), next(rp))
+# 7 7
+print(list(itertools.repeat(8, 4)))  # 使用times参数限制产出
+# [8, 8, 8, 8]
+print(list(map(operator.mul, range(11), itertools.repeat(5))))  # repeat生成器函数的常见用途：为map函数提供固定参数，这里提供乘数5
+# [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+
+# combinations、combinations_with_replacement、permutations以及product函数，称为组合学生成器
+print(list(itertools.combinations('ABC', 2)))  # 每2个元素的各种组合，元素顺序无关紧要
+# [('A', 'B'), ('A', 'C'), ('B', 'C')]
+print(list(itertools.combinations_with_replacement('ABC', 2)))  # # 每2个元素的各种组合，包含相同元素的组合
+# [('A', 'A'), ('A', 'B'), ('A', 'C'), ('B', 'B'), ('B', 'C'), ('C', 'C')]
+print(list(itertools.permutations('ABC', 2)))
+# [('A', 'B'), ('A', 'C'), ('B', 'A'), ('B', 'C'), ('C', 'A'), ('C', 'B')]  # 每2个元素的各种组合，元素顺序有重要意义
+
+
+''' 用于重新排列元素的生成器函数：产出输入的可迭代对象中的全部元素，不过会以某种方式重新排列
+   模块                       函数                                                        说明
+itertools              groupby(it, key=None)                  产出由两个元素组成的元素，形式为(key, group），其中key是分组标准，group是生成器，用于产出分组里的元素
+(内置)   
+   
+'''
