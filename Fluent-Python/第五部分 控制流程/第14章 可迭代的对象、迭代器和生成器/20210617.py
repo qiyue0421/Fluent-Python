@@ -158,6 +158,37 @@ print(list(itertools.permutations('ABC', 2)))
 ''' 用于重新排列元素的生成器函数：产出输入的可迭代对象中的全部元素，不过会以某种方式重新排列
    模块                       函数                                                        说明
 itertools              groupby(it, key=None)                  产出由两个元素组成的元素，形式为(key, group），其中key是分组标准，group是生成器，用于产出分组里的元素
-(内置)   
-   
+(内置)                  reversed(seq)                          从后向前，倒序产出seq中的元素；seq必须是序列，或者是实现了__reversed__特殊方法的对象
+itertools              tree(it, n=2)                          产出一个由n个生成器组成的元组，每个生成器用于单独产出输入的可迭代对象中的元素
 '''
+print(list(itertools.groupby('LLLLAAGGG')))  # 产出(key, group_generator)形式的元组
+# [('L', <itertools._grouper object at 0x000002AEEEABACC0>), ('A', <itertools._grouper object at 0x000002AEEEABAC50>), ('G', <itertools._grouper object at 0x000002AEEEABACF8>)]
+for char, group in itertools.groupby('LLLLAAGGG'):  # 处理groupby函数返回的生成器要嵌套迭代：这里外层使用for循环
+    print(char, '->', list(group))  # 内层使用列表推导
+# L -> ['L', 'L', 'L', 'L']
+# A -> ['A', 'A']
+# G -> ['G', 'G', 'G']
+
+animals = ['duck', 'eagle', 'rat', 'giraffe', 'bear', 'bat', 'dolphin', 'shark', 'lion']
+animals.sort(key=len)  # 就地排序，为了使用groupby函数，要排序输入，这里按照单词的长度排序
+print(animals)
+# ['rat', 'bat', 'duck', 'bear', 'lion', 'eagle', 'shark', 'giraffe', 'dolphin']
+for length, group in itertools.groupby(animals, len):
+    print(length, '->', list(group))
+# 3 -> ['rat', 'bat']
+# 4 -> ['duck', 'bear', 'lion']
+# 5 -> ['eagle', 'shark']
+# 7 -> ['giraffe', 'dolphin']
+
+for length, group in itertools.groupby(reversed(animals), len):  # 使用reversed函数反向迭代animals
+    print(length, '->', list(group))
+# 7 -> ['dolphin', 'giraffe']
+# 5 -> ['shark', 'eagle']
+# 4 -> ['lion', 'bear', 'duck']
+# 3 -> ['bat', 'rat']
+
+g1, g2 = itertools.tee('ABC')  # tee函数只有一个作用：从输入的一个可迭代对象中产出多个生成器，每个生成器都可以产出输入的各个元素
+print(list(g1), list(g2))
+# ['A', 'B', 'C'] ['A', 'B', 'C']
+print(list(zip(*itertools.tee('ABC'))))
+# [('A', 'A'), ('B', 'B'), ('C', 'C')]
