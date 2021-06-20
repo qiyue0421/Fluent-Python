@@ -125,16 +125,48 @@ ContextDecorator
     
 ExitStack
     这个上下文管理器能进入多个上下文管理器。with块结束时，ExitStack按照后进先出的顺序调用栈中各个上下文管理器的__exit__方法。如果事先不知道with块要进入多少个上下文管理器，可以使用这个类。例如，同时打开任意一个文件列表中的所有文件
-
 '''
 
 
+"""4、使用@contextmanager"""
+'''
+①、@contextmanager装饰器能减少创建上下文管理器的样板代码量，因为不用编写一个完整的类，定义__enter__和__exit__方法，而只需实现一个yield语句的生成器，生成想让__enter__方法返回的值。
 
+②、在使用@contextmanager装饰的生成器中，yield语句的作用是把函数的定义体分成两部分：yield语句前面的所有代码在with块开始时（即调用__enter__方法时）执行，yield语句后面的代码在with块结束时（即调用__exit__方法时）执行
 
+③、contextlib.contextmanager装饰器会把函数包装成实现了__enter__和__exit__方法的类
+__enter__方法作用：
+    * 调用生成器函数，保存生成器对象（这里称为gen）
+    * 调用next(gen)，执行到yield关键字所在的位置
+    * 返回next(gen)产出的值，以便把产出的值绑定到with/as语句中的目标变量上
+    
+with块终止时，__exit__方法会做以下几件事：
+    * 检查有没有把异常传给exc_type；如果有，调用gen.throw(exception)，在生成器函数定义体中包含yield关键字的那一行抛出异常
+    * 否则，调用next(gen)，继续执行生成器函数定义体中yield语句之后的代码
+'''
+import contextlib
 
+@contextlib.contextmanager
+def looking_glass():
+    import sys
+    original_write = sys.stdout.write
 
+    def reverse_write(text):
+        original_write(text[::-1])
 
+    sys.stdout.write = reverse_write
+    msg = ''
+    try:
+        yield 'JABBERWOCKY'  # 产出一个值，这个值会绑定到with语句中as子句的目标变量上。执行with块中的代码时，这个函数会在这一点暂停
+    except ZeroDivisionError:  # 处理ZeroDivisionError异常，设置一个错误消息
+        msg = 'Plase DO NOT divide by zero'
+    finally:
+        sys.stdout.write = original_write  # 控制权一旦跳出with块，继续执行yield语句之后的代码，这里是恢复成原来的sys.stdout.write方法
+        if msg:
+            print(msg)
 
-
-
-
+with looking_glass() as what:
+    print('Alice, Kitty and Snowdrop')
+    print(what)
+# pordwonS dna yttiK ,ecilA
+# YKCOWREBBAJ
