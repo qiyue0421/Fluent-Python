@@ -116,12 +116,42 @@ def averager():
 '''
 
 
+"""4、预激协程的装饰器"""
+# 如果不预激，那么协程没什么用，为了简化协程的用法，有时会使用一个预激装饰器
+from functools import wraps
+
+def coroutine(func):
+    """ 装饰器：向前执行到第一个yield表达式，预激func """
+    @wraps(func)
+    def primer(*args, **kwargs):  # 将被装饰的生成器函数替换成primer函数；调用primer函数时，返回预激后的生成器
+        gen = func(*args, **kwargs)  # 调用被装饰的函数，获取生成器对象
+        next(gen)  # 预激生成器
+        return gen  # 返回生成器
+    return primer
 
 
+@coroutine  # 使用装饰器
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:  # 无限循环表明，只要调用方不断把值发给这个协程，它就会一直接收值，然后生成结果。仅当调用方在协程上调用close()方法，或者没有对协程的引用而被垃圾回收程序回收时，这个协程才会终止
+        term = yield average  # yield表达式用于暂停执行协程，把结果发送给调用方；还用于接收调用方后面发送给协程的值，恢复无限循环
+        total += term
+        count += 1
+        average = total/count
 
-
-
-
+''' 执行过程：
+>>> coro_avg = averager()  # 创建一个生成器对象，在coroutine装饰器的primer函数中已经预激了这个生成器
+>>> inspect.getgeneratorstate(coro_avg)  # 当前处于GEN_SUSPENDED状态，因此这个协程已经准备好了，可以接收值了
+'GEN_SUSPENDED'
+>>> coro_avg.send(10)  # 立即开始把值发给coro_avg，计算移动平均值
+10.0
+>>> coro_avg.send(30)
+20.0
+>>> coro_avg.send(5)
+15.0
+'''
 
 
 
