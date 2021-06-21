@@ -92,3 +92,41 @@ StopIteration
 '''
 
 
+"""3、示例：使用协程计算移动平均值"""
+# 计算移动平均值的协程：好处是total和count声明为局部变量即可，无需使用实例属性或闭包在多次调用之间保持上下文
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:  # 无限循环表明，只要调用方不断把值发给这个协程，它就会一直接收值，然后生成结果。仅当调用方在协程上调用close()方法，或者没有对协程的引用而被垃圾回收程序回收时，这个协程才会终止
+        term = yield average  # yield表达式用于暂停执行协程，把结果发送给调用方；还用于接收调用方后面发送给协程的值，恢复无限循环
+        total += term
+        count += 1
+        average = total/count
+
+''' 执行过程
+>>> coro_avg = averager()  # 创建协程对象
+>>> next(coro_avg)  # 预激协程
+>>> coro_avg.send(10)  # 计算移动平均值
+10.0
+>>> coro_avg.send(30)
+20.0
+>>> coro_avg.send(5)
+15.0
+'''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
