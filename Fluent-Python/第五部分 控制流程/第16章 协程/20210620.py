@@ -152,11 +152,3 @@ def averager():
 >>> coro_avg.send(5)
 15.0
 '''
-
-
-
-
-
-
-
-
