@@ -77,7 +77,7 @@ GEN_SUSPENDED
 >>> my_coro2.send(28)  # 发送数字28给暂停的协程，计算yield的值，得到28，然后把数绑定给b。打印 -> Received: b = 28 消息，产出 a + b 的值（42），然后协程暂停，等待为c赋值
 -> Received: b = 28
 42
->>> my_coro2.send(99)  # 发送数字99给暂停的协程，计算yield表达式，得到99，将数绑定给c。打印 -> Received: c = 99 消息，然后协程终止，导致生成器对象抛出StopIteration异常
+>>> my_coro2.send(99)  # 发送数字99给暂停的协程，计算yield表达式，得到99，将数绑定给c。打印 -> Received: c = 99 消息，然后协程终止（运行到结尾了），导致生成器对象抛出StopIteration异常
 -> Received: c = 99
 Traceback (most recent call last):
   File "<input>", line 1, in <module>
@@ -152,3 +152,48 @@ def averager():
 >>> coro_avg.send(5)
 15.0
 '''
+
+
+"""5、终止协程和异常处理"""
+# 协程中未处理的异常会向上冒泡，传给next函数或send方法的调用方（即触发协程的对象）
+'''
+>>> coro_avg = averager() 
+>>> coro_avg.send(40)
+40.0
+>>> coro_avg.send(50)
+45.0
+>>> coro_avg.send('spam')  # 发送的值不是数字，导致协程内部有异常抛出，由于协程内没有处理异常，协程会终止
+Traceback (most recent call last):
+  ...
+TypeError: unsupported operand type(s) for +=: 'float' and 'str'
+>>> coro_avg.send(60)  # 如果试图重新激活协程，会抛出StopIteration异常
+Traceback (most recent call last):
+  File "<input>", line 1, in <module>
+StopIteration
+'''
+
+''' 终止协程的方式：发送某个哨符值，让协程退出
+内置的None和Ellipsis等常量经常用作哨符值，也可以把StopIteration类（类本身，而不是实例）作为哨符值
+my_coro.send(StopIteration)
+'''
+
+''' 显式地将异常发给协程：throw和close两个方法
+generator.throw(exc_type[, exc_value[, traceback]])
+    致使生成器在暂停的yield表达式处抛出指定的异常。如果生成器处理了抛出的异常，代码会向前执行到下一个yield表达式，而产出的值会成为调用generator.throw方法得到的返回值。
+    如果生成器没有处理抛出的异常，异常会向上冒泡，传到调用方的上下文中
+
+generator.close()
+    致使生成器在暂停的yield表达式处抛出GeneratorExit异常。如果生成器没有处理这个异常，或者抛出了StopIteration异常（通常是指运行到结尾），调用方不会报错。如果收到GeneratorExit异常，生成器一定不能产出值，
+    否则解释器会抛出RuntimeError异常。生成器抛出的其他异常会向上冒泡，传给调用方。
+'''
+
+
+
+
+
+
+
+
+
+
+
