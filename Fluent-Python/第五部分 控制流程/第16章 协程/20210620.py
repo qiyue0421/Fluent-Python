@@ -156,7 +156,7 @@ def averager():
 
 """5、终止协程和异常处理"""
 # 协程中未处理的异常会向上冒泡，传给next函数或send方法的调用方（即触发协程的对象）
-'''
+''' 协程中未处理的异常会向上冒泡，传给next函数或send方法的调用方（即触发协程的对象）
 >>> coro_avg = averager() 
 >>> coro_avg.send(40)
 40.0
@@ -170,11 +170,8 @@ TypeError: unsupported operand type(s) for +=: 'float' and 'str'
 Traceback (most recent call last):
   File "<input>", line 1, in <module>
 StopIteration
-'''
 
-''' 终止协程的方式：发送某个哨符值，让协程退出
-内置的None和Ellipsis等常量经常用作哨符值，也可以把StopIteration类（类本身，而不是实例）作为哨符值
-my_coro.send(StopIteration)
+终止协程的方式：发送某个哨符值，让协程退出。内置的None和Ellipsis等常量经常用作哨符值，也可以把StopIteration类（类本身，而不是实例）作为哨符值（my_coro.send(StopIteration)）
 '''
 
 ''' 显式地将异常发给协程：throw和close两个方法
@@ -186,14 +183,61 @@ generator.close()
     致使生成器在暂停的yield表达式处抛出GeneratorExit异常。如果生成器没有处理这个异常，或者抛出了StopIteration异常（通常是指运行到结尾），调用方不会报错。如果收到GeneratorExit异常，生成器一定不能产出值，
     否则解释器会抛出RuntimeError异常。生成器抛出的其他异常会向上冒泡，传给调用方。
 '''
+class DemoException(Exception):  # 自定义异常
+    pass
 
+def demo_exc_handling():
+    print('-> coroutine started')
+    while True:
+        try:
+            x = yield
+        except DemoException:  # 特别处理DemoException异常
+            print('*** DemoException handled. Continuing...')
+        else:  # 没有异常就显示接收到的值
+            print('-> coroutine received: {!r}'.format(x))
+        finally:
+            print('-> coroutinue ending')  # 不管协程如何结束，都会执行finally块处的代码
+    # noinspection PyUnreachableCode
+    raise RuntimeError('This line should never run.')  # 这一行永远不运行，因为只有未处理的异常才会终止while循环，而一旦出现未处理的异常，协程就会立即终止
 
+''' 激活和关闭demo_exc_handling，没有异常
+>>> exc_coro = demo_exc_handling()
+>>> next(exc_coro)
+-> coroutine started
+>>> exc_coro.send(11)
+-> coroutine received: 11
+>>> exc_coro.send(22)
+-> coroutine received: 22
+>>> exc_coro.close()
+>>> from inspect import getgeneratorstate
+>>> getgeneratorstate(exc_coro)
+'GEN_CLOSED'
+'''
 
+''' 将DemoException异常传入demo_exc_handling不会导致协程中止
+>>> exc_coro = demo_exc_handling()
+>>> next(exc_coro)
+-> coroutine started
+>>> exc_coro.send(11)
+-> coroutine received: 11
+>>> exc_coro.throw(DemoException)  # 处理异常中
+*** DemoException handled. Continuing...
+>>> getgeneratorstate(exc_coro)  # 协程没有被中止
+'GEN_SUSPENDED'
+>>> exc_coro.send(22)  # 依然可以使用
+-> coroutine received: 22
+'''
 
-
-
-
-
-
-
-
+''' 如果不处理传入的异常，协程会中止
+>>> exc_coro = demo_exc_handling()
+>>> next(exc_coro)
+-> coroutine started
+>>> exc_coro.send(11)
+-> coroutine received: 11
+>>> exc_coro.throw(ZeroDivisionError)
+Traceback (most recent call last):
+  ...
+ZeroDivisionError
+>>> getgeneratorstate(exc_coro)
+'GEN_CLOSED'
+'''
