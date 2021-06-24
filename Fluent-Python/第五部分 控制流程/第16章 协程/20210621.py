@@ -45,6 +45,7 @@ StopIteration: Result(count=3, average=20.0)
 Result(count=3, average=20.0)
 '''
 
+
 """7、使用yield from"""
 ''' 示例
 # yield from 可用于简化for循环中的yield表达式
