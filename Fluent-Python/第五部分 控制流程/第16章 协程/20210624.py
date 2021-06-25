@@ -5,6 +5,6 @@
 恢复运行。任何其他异常都会向上冒泡，传给委托生成器
 ③、生成器退出时，生成器（或子生成器）中的return expr表达式会触发StopIteration(expr)异常抛出
 ④、yield from表达式的值是子生成器终止时传给StopIteration异常的第一个参数
-⑤、传入委派生成器的异常，除了
+⑤、传入委派生成器的异常，除了GeneratorExit之外都传给子生成器的throw()方法。如果调用throw()方法时抛出StopIteration异常，委派生成器恢复运行。StopIteration之外的异常会向上冒泡，传给委派生成器
 
 '''
