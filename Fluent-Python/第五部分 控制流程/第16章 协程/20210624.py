@@ -1,4 +1,7 @@
 """8、yield from 的意义"""
+import queue
+import random
+
 ''' yield from 的行为
 ①、子生成器产出的值都直接传给委派生成器的调用方（即客户端代码）
 ②、使用send()方法发给委派生成器的值都直接传给子生成器。如果发送的值是None，那么会调用子生成器的__next__()方法。如果发送的值不是None，那么会调用子生成器的send()方法。如果调用的方法抛出StopIteration异常，那么委派生成器
@@ -105,8 +108,104 @@ def taxi_process(ident, trips, start_time=0):  # 每辆出租车调用一次 tax
 ''' 驱动taxi_process协程
 >>> taxi = taxi_process(ident=13, trips=2)  # 创建一个生成器对象，表示一辆出租车。编号13，从t=0开始工作
 >>> next(taxi)  # 预激协程，产出第一个事件
-Event(time=0, proc=13, action='leave garage')
+ 
 >>> taxi.send(_.time + 7)  # 发送当前时间。在控制台中，_变量绑定的是前一个事件的结果，这里直接在上一个事件的时间上加7————这辆出租车7分钟后找到第一个乘客。 
-Event(time=7, proc=13, action='pick up passenger')
+Event(time=7, proc=13, action='pick up passenger')  # 这个事件由for循环在第一个行程的开头产出，表示第一个乘客上车了
+>>> taxi.send(_.time + 23)  # 发送 _.time + 23 ，表示第一个乘客的行程持续了23分钟
+Event(time=30, proc=13, action='drop off passenger')
+>>> taxi.send(_.time + 5)  # 然后，出租车徘徊5分钟
+Event(time=35, proc=13, action='pick up passenger')
+>>> taxi.send(_.time + 48)  # 最后一次行程持续48分钟
+Event(time=83, proc=13, action='drop off passenger')
+>>> taxi.send(_.time + 1)
+Event(time=84, proc=13, action='going home')  # 两次行程完成后，for循环结束，产出'going home'事件
+>>> taxi.send(_.time + 10)  # 如果尝试再把值发给协程，会执行到协程的末尾。协程返回后，解释器会抛出StopIteration异常
+Traceback (most recent call last):
+  ...
+StopIteration
+'''
+class Simulator:  # 简单的离散事件仿真类
+    def __init__(self, procs_map):
+        self.events = queue.PriorityQueue()  # 保存Event实例的PriorityQueue对象，按时间正向排序。元素可以放进（使用put方法）PriorityQueue对象中，然后按item[0]（Event对象的time属性）依序取出（使用get方法）
+        self.procs = dict(procs_map)  # 一个字典，把出租车的编号映射到仿真过程中激活的进程（表示出租车的生成器对象）。这个属性会绑定传入的taxis字典副本————procs_map
 
+    @staticmethod
+    def compute_duration(previous_action):
+        if previous_action in ['leave garage', 'going home']:
+            interval = 5
+        elif previous_action == 'pick up passenger':
+            interval = 20
+        elif previous_action == 'drop off passenger':
+            interval = 1
+        else:
+            raise ValueError('Unknown previous_action: %s' % previous_action)
+        return int(random.expovariate(1 / interval)) + 1  # 返回一个整数
+
+    def run(self, end_time):  # 排定并显示事件，直到时间结束，只需要仿真结束时间（end_time）这一个参数
+        # 排定各辆出租车的第一个事件
+        for _, proc in sorted(self.procs.items()):  # 使用sorted函数获取self.procs中按键排序的元素；用不到键，因此赋值给proc
+            first_event = next(proc)  # 预激各个协程，向前执行到第一个yield表达式，做好接收数据的准备，产出一个Event对象
+            self.events.put(first_event)  # 将各个事件添加到self.events属性表示的PriorityQueue对象中
+
+        # 主循环
+        # 仿真钟，每次产出事件时都会更新仿真钟
+        sim_time = 0  # 把仿真钟归零
+        while sim_time < end_time:  # 仿真钟小于end_time时持续运行
+            if self.events.empty():  # 如果队列中为空————即没有未完成事件，退出主循环
+                print('*** end of events ***')
+                break
+
+            current_event = self.events.get()  # 获取优先队列中time属性最小的Event对象，这是当前事件
+            sim_time, proc_id, previous_action = current_event  # 拆包Event对象，获取数据。这一行代码会更新仿真钟，对应于事件发生时的时间
+            print('taxi:', proc_id, proc_id * '    ', current_event)  # 显示Event对象，根据编号进行缩进显示
+            active_proc = self.procs[proc_id]  # 从字典中获取表示当前活动的出租车的协程
+            next_time = sim_time + self.compute_duration(previous_action)  # 调用compute_duration()函数，传入前一个动作，把结果加到sim_time上，计算出下一次活动的时间
+            try:
+                next_event = active_proc.send(next_time)  # 把计算出的时间发送给出租车协程，协程会产出下一次事件，或者抛出StopIteration异常（完成时）
+            except StopIteration:
+                del self.procs[proc_id]  # 如果抛出了StopIteration异常，就从self.procs字典中删除那个协程
+            else:
+                self.events.put(next_event)  # 否则，把next_event放入队列
+        else:  # 如果循环由于仿真时间到了而退出，显示待完成的事件数量（有时可能碰巧为0）
+            msg = '*** end of simulation time: {} events pending ***'
+            print(msg.format(self.events.qsize()))
+
+
+def main(end_time=180, num_taxis=3):
+    taxis = {i: taxi_process(i, (i + 1) * 2, i * 5) for i in range(num_taxis)}  # 生成器字典
+    print("The number of taxi: ", len(taxis))
+    sim = Simulator(taxis)
+    sim.run(end_time)
+
+main()
+''' 运行一次结果：
+The number of taxi:  3
+taxi: 0  Event(time=0, proc=0, action='leave garage')
+taxi: 0  Event(time=4, proc=0, action='pick up passenger')
+taxi: 1      Event(time=5, proc=1, action='leave garage')
+taxi: 1      Event(time=6, proc=1, action='pick up passenger')
+taxi: 0  Event(time=7, proc=0, action='drop off passenger')
+taxi: 0  Event(time=8, proc=0, action='pick up passenger')
+taxi: 2          Event(time=10, proc=2, action='leave garage')
+taxi: 0  Event(time=11, proc=0, action='drop off passenger')
+taxi: 2          Event(time=11, proc=2, action='pick up passenger')
+taxi: 0  Event(time=12, proc=0, action='going home')
+taxi: 2          Event(time=19, proc=2, action='drop off passenger')
+taxi: 2          Event(time=20, proc=2, action='pick up passenger')
+taxi: 1      Event(time=27, proc=1, action='drop off passenger')
+taxi: 1      Event(time=29, proc=1, action='pick up passenger')
+taxi: 2          Event(time=43, proc=2, action='drop off passenger')
+taxi: 2          Event(time=44, proc=2, action='pick up passenger')
+taxi: 1      Event(time=45, proc=1, action='drop off passenger')
+taxi: 1      Event(time=46, proc=1, action='pick up passenger')
+taxi: 1      Event(time=48, proc=1, action='drop off passenger')
+taxi: 1      Event(time=49, proc=1, action='pick up passenger')
+taxi: 2          Event(time=50, proc=2, action='drop off passenger')
+taxi: 2          Event(time=51, proc=2, action='pick up passenger')
+taxi: 1      Event(time=104, proc=1, action='drop off passenger')
+taxi: 1      Event(time=105, proc=1, action='going home')
+taxi: 2          Event(time=134, proc=2, action='drop off passenger')
+taxi: 2          Event(time=136, proc=2, action='pick up passenger')
+taxi: 2          Event(time=195, proc=2, action='drop off passenger')
+*** end of simulation time: 1 events pending ***
 '''
