@@ -74,10 +74,39 @@ RESULT = _r  # 返回的结果是_r，即整个yield from表达式的值
 '''
 
 
+"""9、使用案例：使用协程做离散事件仿真"""
+''' 离散事件仿真简介
+离散事件仿真（DES）是一种把系统建模成一系列事件的仿真类型。在离散事件仿真中，仿真”钟“向前推进的量不是固定的，而是直接推进到下一个事件模型的模拟时间。
 
+假如抽象模拟出租车的运营过程，其中一个事件是乘客上车，下一个事件则是乘客下车。不管乘客坐了5分钟还是50分钟，一旦乘客下车，仿真钟就会更新，指向此次运营的结束时间。使用离散事件仿真可以在不到一秒钟的时间内模拟一年的出租车运营过程。
+这与连续仿真不同，连续仿真的仿真钟以固定的量（通常很小）不断向前推进。
 
+显然，回合制游戏就是离散事件仿真的例子：游戏的状态只在玩家操作时发生变化，而且一旦玩家决定下一步怎么走了，仿真钟就会冻结。而实时游戏则是连续仿真，仿真钟一直在运行，游戏的状态在一秒钟之内更新了很多次，因此反应慢的玩家很吃亏。
+'''
 
+''' 出租车队运营仿真
 
+'''
+import collections
 
+Event = collections.namedtuple('Event', 'time proc action')  # time字段是事件发生时的仿真时间，proc字段是出租车进程实例的编号，action字段是描述活动的字符串
 
+# taxi_process协程，实现各辆出租车的活动
+def taxi_process(ident, trips, start_time=0):  # 每辆出租车调用一次 taxi_process 函数，创建一个生成器对象，表示各辆出租车的运营过程。ident是出租车的编号；trips是出租车回家之前的行程数量；start_time是出租车离开车库的时间
+    """ 每次改变状态时创建事件，把控制权让给仿真器 """
+    time = yield Event(start_time, ident, 'leave garage')  # 产出的第一个Event是'leave garage'。执行到这一步，协程会暂停，让仿真主循环着手处理排定的下一个事件。需要重新激活这个进程时，主循环会发送当前的仿真时间，赋值给time
+    for i in range(trips):  # 每次行程都会执行一遍这个代码块
+        time = yield Event(time, ident, 'pick up passenger')  # 产出一个Event实例，表示拉到乘客了。协程在这里暂停，需要重新激活这个协程时，主循环会发送（使用send方法）当前时间
+        time = yield Event(time, ident, 'drop off passenger')  # 产出一个Event实例，表示乘客下车了。协程在这里暂停，等待主循环发送时间，然后重新激活
 
+    yield Event(time, ident, 'going home')  # 指定的行程数量完成后，for循环结束，最后产出'going home'事件。此时，协程最后一次暂停。仿真主循环发送时间后，协程重新激活；不过，这里没有把产出的值赋值给变量，因为用不到了
+    # 协程执行到最后时，生成器对象抛出StopIteration异常
+
+''' 驱动taxi_process协程
+>>> taxi = taxi_process(ident=13, trips=2)  # 创建一个生成器对象，表示一辆出租车。编号13，从t=0开始工作
+>>> next(taxi)  # 预激协程，产出第一个事件
+Event(time=0, proc=13, action='leave garage')
+>>> taxi.send(_.time + 7)  # 发送当前时间。在控制台中，_变量绑定的是前一个事件的结果，这里直接在上一个事件的时间上加7————这辆出租车7分钟后找到第一个乘客。 
+Event(time=7, proc=13, action='pick up passenger')
+
+'''
