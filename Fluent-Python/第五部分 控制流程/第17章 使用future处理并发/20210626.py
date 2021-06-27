@@ -77,3 +77,16 @@ CPython解释器本身就不是线程安全的，因此有全局解释器锁（G
 这意味着在Python语言这个层次上可以使用多线程，而I/O密集型Python程序能从中收益：一个Python线程等待网络响应时，阻塞型I/O函数会释放GIL，再运行一个线程
 '''
 
+
+"""3、使用concurrent.futures模块启动进程"""
+''' concurrent.futures————实现的是真正的并行计算
+ProcessPoolExecutor：CPU密集型作业，实现了通用Executor接口，__init__方法的max_workers参数是可选的，而且大多数情况下不使用，默认值是os.cpu_count()函数返回的CPU数量
+ThreadPoolExecutor：I/O密集型作业，实现了通用Executor接口，__init__方法需要max_workers参数，指定线程池中线程的数量
+
+def download_many(cc_list):
+    workers = min(MAX_WORKERS, len(cc_list))
+    with futures.ThreadPoolExecutor(workers) as executor: 
+
+def download_many(cc_list):
+    with futures.ProcessPoolExecutor() as executor: 
+'''
