@@ -90,3 +90,53 @@ def download_many(cc_list):
 def download_many(cc_list):
     with futures.ProcessPoolExecutor() as executor: 
 '''
+
+
+"""4、实验Executor.map方法————并发运行多个可调用的对象"""
+from time import sleep, strftime
+from concurrent import futures
+
+def display(*args):  # 打印传入的参数，并加上固定格式的时间戳
+    print(strftime('[%H:%M:%S]'), end=' ')
+    print(*args)
+
+def loiter(n):
+    msg = '{}loiter({}): doing nothing for {}s...'
+    display(msg.format('\t'*n, n, n))  # 使用制表符缩进，缩进的量由n的值确定
+    sleep(n)
+    msg = '{}loiter({}): done.'
+    display(msg.format('\t'*n, n))
+    return n * 10
+
+def main():
+    display('Script starting.')
+    executor = futures.ThreadPoolExecutor(max_workers=3)  # 创建ThreadPoolExecutor实例，有3个线程
+    results = executor.map(loiter, range(5))  # 把5个任务交给executor（因为只有3个线程，所以只有3个任务立即开始），这是非阻塞调用
+    display('results:', results)  # 立即显示调用executor.map方法的结果：一个生成器
+    display('Waiting for individual results:')
+    for i, result in enumerate(results):  # enumerate函数会隐式调用next(results)，这个函数又会在（内部）表示第一个任务（loiter(0)）的_f future上调用_f.result()方法。result方法会阻塞，直到future运行结束，因此这个循环每次迭代时都要等待下一个结果做好准备
+        display('result {}: {}'.format(i, result))
+
+main()
+''' 运行过程：
+[15:25:41] Script starting.  # 41秒开始
+[15:25:41] loiter(0): doing nothing for 0s...  # loiter(0)开始运行
+[15:25:41] loiter(0): done.  # 甚至会在第二个线程开始前运行完成
+[15:25:41] 	loiter(1): doing nothing for 1s...  # loiter(1)和loiter(2)立即开始，可以并发三个线程
+[15:25:41] 		loiter(2): doing nothing for 2s...
+[15:25:41] results: <generator object Executor.map.<locals>.result_iterator at 0x0000024E4F638DE0>  # executor.map返回的是生成器
+[15:25:41] Waiting for individual results:
+[15:25:41] 			loiter(3): doing nothing for 3s...  # 因为loiter(0)已经运行完了，第一个职程可以启动第四个线程
+
+[15:25:41] result 0: 0  # 此时执行过程可能阻塞，具体情况取决于传给loiter函数的参数：results生成器的__next__方法必须等待第一个future运行结束。此时不会阻塞，因为loiter(0)在循环开始前结束，此时是41秒
+[15:25:42] 	loiter(1): done.  # 42秒时，loiter(1)运行完毕，这个线程闲置，可以开始运行loiter(4)
+[15:25:42] 				loiter(4): doing nothing for 4s... 
+[15:25:42] result 1: 10  # 现在for循环会阻塞，等待loiter(2)的结果
+
+[15:25:43] 		loiter(2): done.  # loiter(2)运行结束，显示结果
+[15:25:43] result 2: 20    # 现在for循环会阻塞，等待loiter(3)的结果
+[15:25:44] 			loiter(3): done.
+[15:25:44] result 3: 30
+[15:25:46] 				loiter(4): done.
+[15:25:46] result 4: 40
+'''
