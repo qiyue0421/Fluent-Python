@@ -69,6 +69,11 @@ main(download_many)  # 调用main函数，传入download_many函数的增强版
 # 20 flags download in 1.07s
 
 
+"""2、阻塞型I/O和GIL"""
+''' GIL
+CPython解释器本身就不是线程安全的，因此有全局解释器锁（GIL），一次只允许使用一个线程执行Python字节码。因此，一个Python进程通常不能同时使用多个CPU核心。
 
-
+编写Python代码时无法控制GIL，不过执行耗时的任务时，可以使用一个内置的函数或一个使用C语言编写的扩展释放GIL。然而，标准库中所有执行阻塞型I/O操作的函数，在等待操作系统返回结果时都会释放GIL，允许其他线程运行。
+这意味着在Python语言这个层次上可以使用多线程，而I/O密集型Python程序能从中收益：一个Python线程等待网络响应时，阻塞型I/O函数会释放GIL，再运行一个线程
+'''
 
