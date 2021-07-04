@@ -125,8 +125,46 @@ def supervisor():  # 也是协程，可以用yield from驱动slow_function函数
     spinner.cancel()  # Task对象可以取消，取消后会在协程当前暂停的yield处抛出asyncio.CannelledError异常，协程可以捕获这个异常，也可以延迟取消，甚至拒绝取消
     return result
 
+
 主要区别如下：
 - asyncio.Task对象差不多与threading.Thread对象等效
+- Task对象用于驱动协程，Thread对象用于调用可调用的对象
+- Task对象不由自己动手实例化，而是通过把协程传给asyncio.ensure_future(...)函数或loop.create_task(...)方法获取
+- 获取的Task对象已经排定了运行时间（例如，由asyncio.ensure_future函数排定）；Thread实例则必须调用start方法，明确告知让它运行
+- 在线程版supervisor函数中，slow_function函数是普通的函数，直接由线程调用。在异步版supervisor函数中，slow_function函数是协程，由yield from驱动
+- 没有API能从外部终止线程，因为线程随时可能被中断，导致系统处于无效状态。如果想终止任务，可以使用Task.cancel()实例方法，在协程内部抛出CancelledError异常。协程可以在暂停的yield处捕获这个异常，处理终止请求
+- supervisor协程必须在main函数中由loop.run_until_complete方法执行
 
+
+如果使用线程做过重要的编程，就知道写出程序有多么困难，因为调度程序任何时候都能中断线程。必须记住保留锁，去保护程序中的重要部分，防止多步操作在执行的过程中中断，防止数据处于无效状态。
+而协程默认会做好全方位保护，以防止中断。必须显式产出才能让程序的余下部分运行。对协程来说，无需保留锁，在多个线程之间同步操作，协程自身就会同步，因为在任意时刻只有一个协程运行。要想交出控制权，可以使用yield或yield from把控制权交还调度程序
 '''
+
+
+"""2、使用asyncio和aiohttp包下载"""
+# 从Python3.4起，asyncio包只直接支持TCP和UDP。如果想使用HTTP或其他协程，那么要借助第三方包。当下，使用asyncio实现HTTP客户端和服务器时，使用的似乎都是aiohttp包
+# 使用asyncio和aiohttp包实现的异步下载脚本：
+import asyncio
+import aiohttp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
