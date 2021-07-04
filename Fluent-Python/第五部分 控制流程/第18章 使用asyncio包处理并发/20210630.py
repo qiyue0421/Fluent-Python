@@ -143,28 +143,95 @@ def supervisor():  # 也是协程，可以用yield from驱动slow_function函数
 
 """2、使用asyncio和aiohttp包下载"""
 # 从Python3.4起，asyncio包只直接支持TCP和UDP。如果想使用HTTP或其他协程，那么要借助第三方包。当下，使用asyncio实现HTTP客户端和服务器时，使用的似乎都是aiohttp包
-# 使用asyncio和aiohttp包实现的异步下载脚本：
+
+''' 使用asyncio和aiohttp包实现的异步下载脚本：
 import asyncio
 import aiohttp
+import os
+import sys
+import time
+
+BASE_URL = 'http://flupy.org/data/flags'
+DEST_DIR = 'downloads/'
+POP20_CC = 'CN IN US ID BR PK NG BD RU JP MX PH VN ET EG DE IR TR CD FR'.split()
 
 
+def save_flag(img, filename):  # 把img（字节序列）保存到DEST_DIR目录中，命名为filename
+    path = os.path.join(DEST_DIR, filename)
+    with open(path, 'wb') as fp:
+        fp.write(img)
 
 
+def show(text):  # 显示一个字符串，然后刷新sys.stdout，这样能在一行消息中看到进度（默认换行才会刷新stdout缓冲）
+    print(text, end=' ')
+    sys.stdout.flush()
 
 
+@asyncio.coroutine  # 协程使用@asyncio.coroutine装饰
+def get_flag(cc):
+    url = "{}/{cc}/{cc}.gif".format(BASE_URL, cc=cc.lower())
+    resp = yield from aiohttp.request('GET', url)  # 阻塞的操作使用协程实现，客户代码通过yield from把职责委托给协程，以便异步运行协程
+    image = yield from resp.read()  # 读取响应内容是一项单独的异步操作
+    return image
 
 
+@asyncio.coroutine
+def download_one(cc):  # 也是协程
+    image = yield from get_flag(cc)
+    show(cc)
+    save_flag(image, cc.lower() + '.gif')
+    return cc
 
 
+def download_many(cc_list):
+    loop = asyncio.get_event_loop()  # 获取事件循环底层实现的引用
+    to_do = [download_one(cc) for cc in sorted(cc_list)]  # 调用download_one函数获取各个国旗，然后构建一个协程对象列表
+    wait_coro = asyncio.wait(to_do)  # wait是一个协程，等传给它的所有协程运行完毕后结束
+    res, _ = loop.run_until_complete(wait_coro)  # 驱动协程，执行事件循环，直到wait_coro运行结束；事件循环运行的过程中，这个脚本会在这里阻塞
+    loop.close()  # 关闭事件循环
+    return len(res)
 
 
+def main(download_many):  # 运行并报告download_many函数的耗时
+    t0 = time.time()
+    count = download_many(POP20_CC)
+    elapsed = time.time() - t0
+    msg = '\n{} flags download in {:.2f}s'
+    print(msg.format(count, elapsed))
 
 
+if __name__ == '__main__':
+    main(download_many)
+'''
 
+''' 原理
+asyncio.wait(...)协程的参数是一个由future或协程构成的可迭代对象；wait会分别把各个协程包装进一个Task对象。最终的结果是，wait处理的所有对象都通过某种方式变成Future类的实例。
+wait是协程函数，因此返回的是一个协程或生成器对象；wait_coro变量中存储的正是这种对象
 
+loop.run_until_complete方法的参数是一个future或协程。如果是协程，run_until_complete方法与wait函数一样，把协程包装进一个Task对象中。协程、future和任务都能由yield from驱动，这正是run_until_complete方法对wait函数返回的
+wait_coro对象所做的事。wait_coro运行结束后返回一个元组，第一个元素是一系列结束的future，第二个元素是一系列未结束的future
 
+以这个协程为例：
+@asyncio.coroutine
+def get_flag(cc):
+    url = "{}/{cc}/{cc}.gif".format(BASE_URL, cc=cc.lower())
+    resp = yield from aiohttp.request('GET', url)
+    image = yield from resp.read()
+    return image
 
+假设上述函数与下述函数的作用相同，只不过协程版从不阻塞
+def get_flag(cc):
+    url = "{}/{cc}/{cc}.gif".format(BASE_URL, cc=cc.lower())
+    resp = requests.get(url)
+    return resp.content
 
+yield from foo 句法能防止阻塞，是因为当前协程（即包含yield from代码的委派生成器）暂停后，控制权回到事件循环手中，再去驱动其他协程；foo future或协程运行完毕后，把结果返回给暂停的协程，将其恢复
+- 使用yield from链接的多个协程最终必须由不是协程的调用方驱动，调用方显式或隐式（例如在for循环中）在最外层委派生成器上调用next(...)函数或.send(...)方法
+- 链条中最内层的子生成器必须是简单的生成器（只使用yield）或可迭代的对象
+- 编写的协程链条始终通过把最外层委派生成器传给asyncio包API中的某个函数（如loop.run_until_complete(...)）驱动。也就是说，使用asyncio包时，编写的代码不通过调用next(...)函数或.send(...)方法驱动协程————这一点由asyncio包实现的事件循环去做
+- 编写的协程链条最终通过yield from把职责委托给asyncio包中的某个协程函数或协程方法（yield from asyncio.sleep(...)），或者其他库中实现高层协议的协程（resp = yield from aiohttp.request('GET', url)）。
+也就是说，最内层的子生成器是库中真正执行I/O操作的函数，而不是自己编写的函数
 
-
-
+概况起来就是：使用asyncio包时，我们编写的异步代码中包含由asyncio本身驱动的协程（即委派生成器），而生成器最终把职责委托给asyncio包或第三方库（如aiohttp）中的协程。这种处理方式相当于架起了管道，
+让asyncio事件循环（通过自己编写的协程）驱动执行低层异步I/O操作的库函数
+'''
