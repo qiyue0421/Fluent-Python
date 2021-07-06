@@ -87,7 +87,6 @@ SyntaxError: invalid syntax
 
 但是，FrozenJSON类的目的是为了便于访问数据，因此更好的方法是检查传给FrozenJSON.__init__方法的映射中是否有键的名称为关键字，如果是关键字，就在键名后面加上_，然后通过下面这种方式获取：
 >>> grad.class_
-1982
 '''
 
 
