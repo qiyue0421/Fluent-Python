@@ -55,7 +55,7 @@ class FrozenJSON:
             return FrozenJSON.build(self.__data[item])
 
     @classmethod
-    def build(cls, obj):
+    def build(cls, obj):  # 将每一层嵌套转换成一个FrozenJSON实例
         if isinstance(obj, abc.Mapping):  # 如果obj是映射，那就构建一个FrozenJSON对象
             return cls(obj)
         elif isinstance(obj, abc.MutableSequence):  # 如果是MutableSequence对象，那必然是列表
@@ -91,19 +91,32 @@ SyntaxError: invalid syntax
 
 
 ''' 使用__new__方法以灵活的方式创建对象
+用于构建实例的是特殊方法__new__：这是个类方法（使用特殊方式处理，因此不必使用@classmethod装饰器），必须返回一个实例。返回的实例会作为第一个参数（即self）传给__init__方法。因为调用__init__方法时要传入实例，
+                             而且禁止返回任何值，所以__init__方法其实是“初始化方法”。真正的构造方法是__new__。几乎不需要自己编写__new__方法，因为从object类继承的实现已经足够了
 
+from collections import abc
+import keyword
 
+class FrozenJSON:  # FrozenJSON类的另一个版本，把之前在类方法build中的逻辑移到了__new__方法中
+    # 一个只读接口，使用属性表示法访问JSON类对象
+    def __new__(cls, arg):  # 类方法，第一个参数是类本身，余下的参数与__init__方法一样，只不过没有self
+        if isinstance(arg, abc.Mapping):
+            return super().__new__(cls)  # 默认的行为是委托给超类的__new__方法，这里调用的是object基类的__new__方法，把唯一的参数设为FrozenJSON
+        elif isinstance(arg, abc.MutableSequence):
+            return [cls(item) for item in arg]
+        else:
+            return arg
 
+    def __init__(self, mapping):
+        self.__data = {}  # 使用mapping参数构建一个字典，这么做有两个目录：一是确保传入的是字典（或者是能转换成字典的对象），二是安全起见，创建一个副本
+        for key, value in mapping.items():  # 检查是否有关键字
+            if keyword.iskeyword(key):
+                key += '_'
+            self.__data[key] = value
+
+    def __getattr__(self, item):  # 仅当没有指定名称（item）的属性时才调用此方法（即在实例、类或超类中找不到指定的属性）
+        if hasattr(self.__data, item):  # 如果item是实例属性self.__data的属性时，返回这个属性，类似于keys方法
+            return getattr(self.__data, item)
+        else:  # 否则，从self.__data中获取item键对应的元素，返回结果
+            return FrozenJSON(self.__data[item])  # 现在只需要调用FrozenJSON构造方法
 '''
-
-
-
-
-
-
-
-
-
-
-
-
