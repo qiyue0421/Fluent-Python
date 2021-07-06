@@ -4,6 +4,7 @@
 
 """1、使用动态属性转换数据"""
 # 下载osconfeed.json文件
+import keyword
 from urllib.request import urlopen
 import warnings
 import os
@@ -26,18 +27,75 @@ def load():
 feed = load()  # 一个字典，里面嵌套着字典和列表，存储着字符串和整数
 print(sorted(feed['Schedule'].keys()))  # 列出"Schedule"键中的4个记录集合
 # ['conferences', 'events', 'speakers', 'venues']
+for key, value in sorted(feed['Schedule'].items()):  # 显示各个集合中的记录数量
+    print('{:3} {}'.format(len(value), key))
+
+print(feed['Schedule']['speakers'][-1]['name'])
+print(feed['Schedule']['speakers'][-1]['serial'])
+
+
+''' 使用动态属性访问JSON类数据'''
+# feed['Schedule']['speakers'][-1]['name']) 语法过于冗长，可以使用 feed.Schedule.events[40].name 获取值
+from collections import abc
+import keyword
+
+class FrozenJSON:
+    # 一个只读接口，使用属性表示法访问JSON类对象
+    def __init__(self, mapping):
+        self.__data = {}  # 使用mapping参数构建一个字典，这么做有两个目录：一是确保传入的是字典（或者是能转换成字典的对象），二是安全起见，创建一个副本
+        for key, value in mapping.items():  # 检查是否有关键字
+            if keyword.iskeyword(key):
+                key += '_'
+            self.__data[key] = value
+
+    def __getattr__(self, item):  # 仅当没有指定名称（item）的属性时才调用此方法（即在实例、类或超类中找不到指定的属性）
+        if hasattr(self.__data, item):  # 如果item是实例属性self.__data的属性时，返回这个属性，类似于keys方法
+            return getattr(self.__data, item)
+        else:  # 否则，从self.__data中获取item键对应的元素，返回调用FrozenJSON.build()方法得到的结果
+            return FrozenJSON.build(self.__data[item])
+
+    @classmethod
+    def build(cls, obj):
+        if isinstance(obj, abc.Mapping):  # 如果obj是映射，那就构建一个FrozenJSON对象
+            return cls(obj)
+        elif isinstance(obj, abc.MutableSequence):  # 如果是MutableSequence对象，那必然是列表
+            return [cls.build(item) for item in obj]  # 把obj中的每个元素递归地传给build方法，构建一个列表
+        else:  # 既不是字典也不是列表，直接返回元素
+            return obj
+
+
+raw_feed = load()
+feed = FrozenJSON(raw_feed)  # 传入嵌套的字典和列表组成的raw_feed，创建一个FrozenJSON实例
+print(len(feed.Schedule.speakers))  # FrozenJSON实例可以使用属性表示法遍历嵌套的字典
+# 357
+print(sorted(feed.Schedule.keys()))  # 使用底层字典的方法，例如keys()
+# ['conferences', 'events', 'speakers', 'venues']
+for key, value in sorted(feed.Schedule.items()):
+    print('{:3} {}'.format(len(value), key))
+
+
+''' 处理无效属性名
+FrozenJSON类有个缺陷：没有对名称为Python关键字的属性做特殊处理。比如说像下面这样构建一个对象：
+>>> grad = FrozenJSON({'name': 'Jim Bo', 'class': 1982})
+>>> grad.class
+    print(grad.class)
+                   ^
+SyntaxError: invalid syntax
+
+此时无法读取grad.class的值，因为在python中class是保留字，也可以换一种方法：
+>>> getattr(grad, 'class')
+
+但是，FrozenJSON类的目的是为了便于访问数据，因此更好的方法是检查传给FrozenJSON.__init__方法的映射中是否有键的名称为关键字，如果是关键字，就在键名后面加上_，然后通过下面这种方式获取：
+>>> grad.class_
+1982
+'''
+
+
+''' 使用__new__方法以灵活的方式创建对象
 
 
 
-
-
-
-
-
-
-
-
-
+'''
 
 
 
