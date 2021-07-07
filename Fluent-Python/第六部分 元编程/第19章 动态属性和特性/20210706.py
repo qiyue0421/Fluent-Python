@@ -1,11 +1,11 @@
-''' 使用shelve模块调整OSCON数据源的结构
+""" 使用shelve模块调整OSCON数据源的结构
 shelve模块提供了pickle存储方式。shelve.open高阶函数返回一个shelve.Shelf实例，这是简单的键值对象数据库，背后由dbm模块支持，具有下述特点：
     * shelve.Shelf是abc.MutableMapping的子类，因此提供了处理映射类型的重要方法
     * 此外，shelve.Shelf类还提供了几个管理I/O的方法，如sync和close；它也是一个上下文管理器
     * 只要把新值赋予键，就会保存键和值
     * 键必须是字符串
     * 值必须是pickle模块能够处理的对象
-'''
+"""
 import json
 import os
 import shelve
