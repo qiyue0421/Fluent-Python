@@ -104,7 +104,7 @@ print(obj.data)  # 现在读取obj.data，获取的是实例属性的值，从ob
 print(Class.data)  # 类属性的值完好无损
 # the class data attr
 
-''' 实例属性不会遮盖类特性'''
+''' 实例属性不会遮盖类特性 '''
 print(Class.prop)  # 直接从Class中读取prop特性，获取的是特性对象本身，不会运行特性的读值方法
 # <property object at 0x00000239B70DC908>
 print(obj.prop)  # 读取obj.prop会执行特性的读值方法
@@ -183,3 +183,4 @@ Help on property:
 
 None
 '''
+
