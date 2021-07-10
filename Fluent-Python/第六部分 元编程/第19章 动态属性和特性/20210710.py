@@ -77,7 +77,34 @@ del knight.member
 # -- All right, we'll call it a draw.
 
 
+"""6、处理属性的重要属性和函数"""
+''' 影响属性处理方式的特殊属性 
+__class__
+    对象所属类的引用（即obj.__class__与type(obj)的作用相同）。Python的某些特殊方法，例如__getattr__，只在对象的类中寻找，而不在实例中寻找
 
+__dict__
+    一个映射，存储对象或类的可写属性。有__dict__属性的对象，任何时候都能随意设置新属性。如果类有__slots__属性，它的实例可能没有__dict__属性
+    
+__slots__
+    类可以定义这个属性，限制实例能有哪些属性。__slots__属性的值是一个字符串组成的元组，指明允许有的属性。如果__slots__中没有__dict__，那么该类的实例没有__dict__属性，实例只允许有指定名称的属性
+'''
 
+''' 处理属性的内置函数
+dir([object])
+    列出对象的大多数属性。dir函数的目的是交互式使用，因此没有提供完整的属性列表，只列出一组“重要的”属性名。dir函数能审查有或者没有__dict__属性的对象。dir函数不会列出__dict__属性本身，但会列出其中的键。
+    dir函数也不会列出类的几个特殊属性，例如__mro__、__bases__和__name__。如果没有指定可选的object参数，dir函数会列出当前作用域中的名称。
+    
+getattr(object, name[, default])
+    从object对象中获取name字符串对应的属性。获取的属性可能来自对象所属的类或超类。如果没有指定的属性，getattr函数抛出AttributeError异常，或者返回default参数的值（如果设定了这个参数的话）
 
+hasattr(object, name)
+    如果object对象中存在指定的属性，或者能以某种方式（例如继承）通过object对象获取指定的属性，返回True。
+    
+setattr(object, name, value)
+    把object对象指定属性的值设为value，前提是object对象能接受那个值，这个函数可能会创建一个新属性，或者覆盖现有的属性。
+    
+vars([object])
+    返回object对象的__dict__属性；如果实例所属的类定义了__slots__属性，实例没有__dict__属性，那么vars函数不能处理那个实例（相反，dir函数能够处理这种实例）。
+    如果没有指定参数，那么vars()函数的作用与locals()函数一样：返回表示本地作用域的字典 
+'''
 
