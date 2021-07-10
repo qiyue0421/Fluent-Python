@@ -108,3 +108,27 @@ vars([object])
     如果没有指定参数，那么vars()函数的作用与locals()函数一样：返回表示本地作用域的字典 
 '''
 
+''' 处理属性的特殊方法
+在用户自定义的类中，下述特殊方法用于获取、设置、删除和列出属性。使用点号或内置的getattr、hasattr和setattr函数存取属性都会触发下述列表中相应的特殊方法。
+但是，直接通过实例的__dict__属性读写属性不会触发这些特殊方法（通常使用这种方式跳过特殊方法）
+
+特殊方法不会被同名实例属性遮盖，假设有个名为Class的类，obj是Class类的实例，attr是obj的属性。不管是使用点号存取属性，还是使用内置函数，都会触发下述方法中的一个
+__delattr__(self, name)
+    只要使用del语句删除属性，就会调用这个方法。例如，del obj.attr语句触发Class.__delattr__(obj, 'attr')方法
+
+__dir__(self)
+    把对象传给dir函数时调用，列出属性。例如dir(obj)触发Class.__dir__(obj)方法
+    
+__getattr__(self, name)
+    仅当获取指定的属性失败，搜索过obj、Class和超类之后调用。表达式obj.no_such_attr、getattr(obj, 'no_such_attr')和hasattr(obj, 'no_such_attr')可能会触发Class.__getattr__(obj, 'no_such_attr')方法，
+    但是，仅当在obj、Class和超类中找不到指定的属性时才会触发
+
+__getattribute__(self, name)
+    尝试获取指定的属性时总会调用这个方法，不过，寻找的属性是特殊属性或特殊方法时除外。点号与getattr和hasattr内置函数会触发这个方法。调用__getattribute__方法且抛出AttributeError异常时，才会调用__getattr__方法。
+    为了在获取obj实例的属性时不导致无限递归，__getattribute__方法时实现要使用super().__getattribute__(obj, name)。
+
+__setattr__(self, name, value)
+    尝试设置指定的属性时总会调用这个方法。点号和setattr内置函数会触发这个方法。例如，obj.attr = 42和setattr(obj, 'attr', 42)都会触发Class.__setattr__(obj, 'attr', 42)方法
+    
+其实，特殊方法__getattribute__和__setattr__不管怎样都会调用，几乎会影响每一次属性存取，因此比__getattr__方法（只处理不存在的属性名）更难正确使用。
+'''
