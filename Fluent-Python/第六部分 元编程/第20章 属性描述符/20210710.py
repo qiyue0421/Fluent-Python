@@ -3,6 +3,8 @@
 # 描述符是python的独有特征，不仅在应用层中使用，在语言的基础设施中也有用到。除了特性之外，使用描述符的Python功能还有方法以及classmethod和staticmethod装饰器
 
 """1、描述符示例：验证属性"""
+import sre_parse
+
 ''' LineItem类第3版：一个简单的描述符
 实现了__get__、__set__或__delete__方法的类是描述符。描述符的作用：创建一个实例，作为另一个类的类属性
 
@@ -37,12 +39,47 @@ class LineItem:
         return self.weight * self.price
 
 
+''' LineItem类第4版：自动获取储存属性的名称 '''
+class Quantity:
+    __counter = 0  # Quantity类的类属性，统计Quantity实例的数量
 
+    def __init__(self):
+        cls = self.__class__  # Quantity类的引用
+        prefix = cls.__name__
+        index = cls.__counter
+        self.storage_name = '_{}#{}'.format(prefix, index)  # 每个描述符实例的storage_name属性都是独一无二的，因为其值由描述符类的名称和__counter属性的当前值构成，例如_Quantity#0
+        cls.__counter += 1  # 递增__counter属性的值，保证每个描述符实例都不同
 
+    def __get__(self, instance, owner):  # 实现__get__方法，因为托管属性的名称与storage_name不同，owner参数是托管类的引用（LineItem）,通过描述符从托管类中获取属性时用得到
+        if instance is None:
+            return self  # 如果不是通过实例调用，返回描述符自身
+        else:  # 否则返回托管属性的值
+            return getattr(instance, self.storage_name)  # 使用内置的getattr函数从instance中获取储存属性的值
 
+    def __set__(self, instance, value):
+        if value > 0:
+            setattr(instance, self.storage_name, value)  # 使用内置函数setattr把值存储在instance中
+        else:
+            raise ValueError('value must be > 0')
 
+class LineItem:
+    weight = Quantity()  # 不用把托管属性的名称传给Quantity构造方法
+    price = Quantity()
 
+    def __init__(self, description, weight, price):
+        self.description = description
+        self.weight = weight
+        self.price = price
 
+    def subtotal(self):
+        return self.weight * self.price
+
+# 测试
+coconuts = LineItem('Brazilian cocount', 20, 17.95)
+print(coconuts.weight, coconuts.price)
+# 20 17.95
+print(getattr(coconuts, '_Quantity#0'), getattr(coconuts, '_Quantity#1'))
+# 20 17.95
 
 
 
