@@ -76,8 +76,29 @@ print(obj.over)  # 即使是名为over的实例属性，Managed.over描述符仍
 # -> Overriding.__get__(<Overriding object>, <Managed object>, <class Managed>)
 
 
-''' '''
+''' 没有__get__方法的覆盖型描述符 
+通常，覆盖型描述符既会实现__set__方法，也会实现__get__方法，不过也可以只实现__set__方法。此时，只有写操作由描述符处理。通过实例读取描述符会返回描述符对象本身，因为没有处理读取操作的__get__方法。
+如果直接通过实例的__dict__属性创建同名实例属性，以后再设置那个属性时，仍会由__set__方法插手接管，但是读取那个属性的话，就会直接从实例中返回新赋予的值，而不会返回描述符对象，也就是说，实例属性会遮盖描述符，不过只有读取操作是如此
+'''
+print(obj.over_no_get)  # 这个覆盖型描述符没有__get__方法，因此，obj.over_no_get从类中获取描述符实例
+# <__main__.OverridingNoGet object at 0x0000015BD6EA27B8>
+print(Managed.over_no_get)  # 直接从托管类中读取描述符实例也是如此
+# <__main__.OverridingNoGet object at 0x0000015BD6EA27B8>
 
+obj.over_no_get = 7  # 赋值操作会触发描述符的__set__方法
+# -> OverridingNoGet.__set__(<OverridingNoGet object>, <Managed object>, 7)
+print(obj.over_no_get)  # 因为__set__方法没有修改属性，所以在此读取的obj.over_no_get获取的仍是托管类中的描述符实例
+# <__main__.OverridingNoGet object at 0x0000015BD6EA27B8>
+
+
+obj.__dict__['over_no_get'] = 9  # 通过实例的__dict__属性设置名为over_no_get的实例属性
+print(obj.over_no_get)  # 此时over_no_get实例属性会遮盖描述符，但是只有读操作是如此
+# 9
+
+obj.over_no_get = 7  # 为obj.over_no_get赋值，仍然经过描述符的__set__方法处理
+# -> OverridingNoGet.__set__(<OverridingNoGet object>, <Managed object>, 7)
+print(obj.over_no_get)  # 但是读取时，只要有同名的实例属性，描述符就会被遮盖
+# 9
 
 
 
