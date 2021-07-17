@@ -117,3 +117,14 @@ print(Managed.non_over)  # Managed.non_over描述符依然存在，会通过类�
 del obj.non_over  # 如果删除了non_over实例属性
 print(obj.non_over)  # 读取obj.non_over时，会触发类中描述符的__get__方法，第二个参数的值是托管实例
 # -> NonOverriding.__get__(<NonOverriding object>, <Managed object>, <class Managed>)
+
+
+''' 在类中覆盖描述符 
+不管描述符是不是覆盖型，为类属性赋值都能覆盖描述符。这是一种猴子补丁技术
+'''
+obj = Managed()
+Managed.over = 1  # 覆盖描述符属性
+Managed.over_no_get = 2
+Managed.non_over = 3
+print(obj.over, obj.over_no_get, obj.non_over)
+# 1 2 3
