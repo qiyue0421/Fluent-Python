@@ -101,5 +101,19 @@ print(obj.over_no_get)  # 但是读取时，只要有同名的实例属性，描
 # 9
 
 
+''' 非覆盖型描述符 
+没有实现__set__方法的描述符是非覆盖型描述符。如果设置了同名的实例属性，描述符会被覆盖，致使描述符无法处理那个实例的那个属性。方法是以非覆盖型描述符实现的。
+'''
+obj = Managed()
+print(obj.non_over)  # 触发描述符的__get__方法，第二个参数的值是obj
+# -> NonOverriding.__get__(<NonOverriding object>, <Managed object>, <class Managed>)
 
+obj.non_over = 7  # Managed.non_over是非覆盖型描述符，因此没有干涉赋值操作的__set__方法
+print(obj.non_over)  # obj有个名为non_over的实例属性，把Managed类的同名描述符属性遮盖掉
+# 7
+print(Managed.non_over)  # Managed.non_over描述符依然存在，会通过类截获这次访问
+# -> NonOverriding.__get__(<NonOverriding object>, None, <class Managed>)
 
+del obj.non_over  # 如果删除了non_over实例属性
+print(obj.non_over)  # 读取obj.non_over时，会触发类中描述符的__get__方法，第二个参数的值是托管实例
+# -> NonOverriding.__get__(<NonOverriding object>, <Managed object>, <class Managed>)
