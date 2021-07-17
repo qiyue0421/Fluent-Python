@@ -76,6 +76,7 @@ print(obj.over)  # 即使是名为over的实例属性，Managed.over描述符仍
 # -> Overriding.__get__(<Overriding object>, <Managed object>, <class Managed>)
 
 
+''' '''
 
 
 
