@@ -128,3 +128,66 @@ Managed.over_no_get = 2
 Managed.non_over = 3
 print(obj.over, obj.over_no_get, obj.non_over)
 # 1 2 3
+
+
+"""3、方法是描述符"""
+# 在类中定义的函数属于绑定方法（bound method），因为用户定义的函数都有__get__方法，所以依附到类上时，就相当于描述符
+obj = Managed()
+print(obj.spam)  # obj.spam获取的是绑定方法对象
+# <bound method Managed.spam of <__main__.Managed object at 0x000001DC6A7D34E0>>
+print(Managed.spam)  # Managed.spam获取的是函数
+
+obj.spam = 7  # 为obj.spam赋值，会遮盖类属性，导致无法通过obj实例访问spam方法
+print(obj.spam)  # 函数没有实现__set__方法，因此是非覆盖型描述符
+
+# 通过托管类访问时，函数的__get__方法会返回自身的引用；但是，通过实例访问时，函数的__get__方法返回的是绑定方法对象：一种可调用的对象，里面包装着函数，并把托管实例（例如obj）绑定给函数的第一个参数（即self）
+
+''' 测试一个方法 
+import collections
+
+class Text(collections.UserString):
+    def __repr__(self):
+        return 'Text({!r})'.format(self.data)  # 返回一个类似Text构造方法调用的字符串，可用于创建相同的实例
+
+    def reverse(self):
+        return self[::-1]
+
+>>> word = Text('forward')
+>>> word
+Text('forward')
+>>> word.reverse()
+Text('drawrof')  # 返回反向拼写的单词
+>>> Text.reverse(Text('backward'))  # 在类上调用方法相当于调用函数
+Text('drawkcab') 
+
+>>> type(Text.reverse), type(word.reverse)  # 注意类型是不同的，一个是function，一个是method
+(<class 'function'>, <class 'method'>)
+
+>>> list(map(Text.reverse, ['repaid', (10, 20, 30), Text('stressed')]))  # Text.reverse相当于函数，甚至可以处理Text实例之外的其他对象
+['diaper', (30, 20, 10), Text('desserts')]
+
+>>> Text.reverse.__get__(word)  # 函数都是非覆盖型描述符，在函数上调用__get__方法时传入实例，得到的是绑定到那个实例上的方法
+<bound method Text.reverse of Text('forward')>
+>>> Text.reverse.__get__(None, Text)  # 调用函数的__get__方法时，如果instance参数的值是None，那么得到的是函数本身
+<function Text.reverse at 0x0000016363CF1730>
+
+>>> word.reverse  # 实际上调用Text.reverse.__get__(word)，返回对应的绑定方法
+<bound method Text.reverse of Text('forward')>
+>>> word.reverse.__self__  # 绑定方法对象有个__self__属性，其值是调用
+forward
+>>> word.reverse.__func__ is Text.reverse  # 绑定方法的__func__属性是依附在托管类上那个原始函数的引用
+True
+'''
+
+
+"""4、描述符用法建议
+①、使用特性以保持简单
+内置的property类创建的其实是覆盖型描述符，__set__方法和__get__方法都实现了，即便不定义设值方法也是如此。
+
+
+
+
+
+"""
+
+
