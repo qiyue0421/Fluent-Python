@@ -61,3 +61,34 @@ print(rex)
 print(Dog.__mro__)  # 新建的类继承自object，与我们的工厂函数没有关系
 # (<class '__main__.Dog'>, <class 'object'>)
 
+
+"""2、定制描述符的类装饰器"""
+# 类装饰器与函数装饰器非常类似，是参数为类对象的函数，返回原来的类或修改后的类
+# 类装饰器还有一个重大缺点：只对直接依附的类有效，这意味着，被装饰的类的子类可能继承也可能不继承装饰器所作的改动，具体情况视改动的方式而定
+
+import model_v6 as model
+
+@model.entity
+class LineItem:
+    description = model.NonBlank()
+    weight = model.Quantity()
+    price = model.Quantity()
+
+    def __init__(self, description, weight, price):
+        self.description = description
+        self.weight = weight
+        self.price = price
+
+    def subtotal(self):
+        return self.weight * self.price
+
+
+print(LineItem.weight.storage_name, LineItem.description.storage_name)
+# _Quantity#weight _NonBlank#description
+raisins = LineItem('Golden raisins', 10, 6.95)
+print(dir(raisins)[:3])
+# ['_NonBlank#description', '_Quantity#price', '_Quantity#weight']
+print(raisins.description)
+# Golden raisins
+print(getattr(raisins, '_NonBlank#description'))
+# Golden raisins
